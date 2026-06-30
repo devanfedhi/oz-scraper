@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: oz_scraper
+      POSTGRES_USER: oz
+      POSTGRES_PASSWORD: oz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oz -d oz_scraper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  liquibase:
+    image: liquibase/liquibase:4.31
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://db:5432/oz_scraper
+      LIQUIBASE_COMMAND_USERNAME: oz
+      LIQUIBASE_COMMAND_PASSWORD: oz
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/db.changelog.yaml
+    volumes:
+      - ./liquibase:/liquibase/changelog:ro
+    command: ["update"]
+
+volumes:
+  postgres-data:

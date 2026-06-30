@@ -1,0 +1,14 @@
+{
+  "name": "oz-scraper",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "docker:start": "docker compose up -d --build",
+    "docker:stop": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
