@@ -6,7 +6,9 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "docker:start": "docker compose up -d --build",
-    "docker:stop": "docker compose down"
+    "docker:stop": "docker compose down",
+    "restate:health": "curl --fail --silent --show-error http://localhost:9070/health",
+    "restate:logs": "docker compose logs -f restate-server restate-app restate-register"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

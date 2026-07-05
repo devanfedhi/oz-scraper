@@ -1,9 +1,9 @@
 import type { Deal } from "@oz-scraper/types";
 
-import type { Database } from "./client.js";
+import type { DatabaseClient } from "./client.js";
 import { deals } from "./schema.js";
 
-export async function insertDeals(database: Database, parsedDeals: Deal[]) {
+export async function insertDeals(database: DatabaseClient, parsedDeals: Deal[]) {
   if (parsedDeals.length === 0) {
     return;
   }

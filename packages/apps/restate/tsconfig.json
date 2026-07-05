@@ -7,7 +7,7 @@
     "types": ["node"]
   },
   "references": [
-    { "path": "../types" }
+    { "path": "../../libs/db" }
   ],
   "include": ["src/**/*.ts"]
 }

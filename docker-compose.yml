@@ -29,5 +29,41 @@ services:
       - ./liquibase:/liquibase/changelog:ro
     command: ["update"]
 
+  restate-server:
+    image: docker.restate.dev/restatedev/restate:latest
+    restart: unless-stopped
+    environment:
+      RESTATE_ADVERTISED_HOST: localhost
+    ports:
+      - "8080:8080"
+      - "9070:9070"
+
+  restate-app:
+    build:
+      context: .
+      dockerfile: packages/apps/restate/Dockerfile
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+    environment:
+      OZ_SCRAPER_DATABASE_URL: postgres://oz:oz@db:5432/oz_scraper?sslmode=disable
+
+  restate-register:
+    image: docker.restate.dev/restatedev/restate:latest
+    restart: "no"
+    depends_on:
+      restate-server:
+        condition: service_started
+      restate-app:
+        condition: service_started
+    environment:
+      RESTATE_ADMIN_URL: http://restate-server:9070
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        until restate deployments register --force --yes http://restate-app:9080; do
+          sleep 2
+        done
+
 volumes:
   postgres-data:
