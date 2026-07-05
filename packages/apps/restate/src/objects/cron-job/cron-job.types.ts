@@ -6,6 +6,8 @@ export type CronJobRequest = {
   payload?: unknown;
 };
 
+export type CronJobPresetName = "notifier" | "scraper";
+
 export type CronJobInfo = {
   request: CronJobRequest;
   nextExecutionTime: string;
