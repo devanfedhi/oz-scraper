@@ -1,11 +1,15 @@
 import * as restate from "@restatedev/restate-sdk";
 
 import { runNotifier } from "./handlers/run-notifier.js";
-import type { NotifierRunResult } from "./notifier.types.js";
+import {
+  NOTIFIER_RUN_HANDLER_NAME,
+  NOTIFIER_SERVICE_NAME,
+  type NotifierRunResult
+} from "./notifier.types.js";
 
 export const notifierService = restate.service({
-  name: "NotifierService",
+  name: NOTIFIER_SERVICE_NAME,
   handlers: {
-    run: runNotifier
+    [NOTIFIER_RUN_HANDLER_NAME]: runNotifier
   }
 });

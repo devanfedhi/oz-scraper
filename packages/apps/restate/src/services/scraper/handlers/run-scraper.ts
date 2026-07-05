@@ -2,7 +2,10 @@ import * as restate from "@restatedev/restate-sdk";
 
 import { databaseHealthcheckStepRetryPolicy } from "../../shared/steps/database-healthcheck/database-healthcheck.policy.js";
 import { runDatabaseHealthcheckStep } from "../../shared/steps/database-healthcheck/database-healthcheck.js";
-import type { ScraperRunResult } from "../scraper.types.js";
+import {
+  SCRAPER_CRON_JOB_PRESET_NAME,
+  type ScraperRunResult
+} from "../scraper.types.js";
 
 export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult> {
   const executedAt = new Date(await ctx.date.now()).toISOString();
@@ -13,7 +16,7 @@ export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult
   );
 
   return {
-    service: "scraper",
+    service: SCRAPER_CRON_JOB_PRESET_NAME,
     status: result.status,
     runtime: "node",
     database: result.database,
