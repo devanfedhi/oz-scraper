@@ -22,6 +22,12 @@ Install dependencies:
 pnpm install
 ```
 
+Enable the repo-managed Git hooks:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 Start Postgres, Liquibase, the Restate server, the bundled Restate app image,
 and the deployment registration job:
 

@@ -11,6 +11,7 @@
     "restate:logs": "docker compose logs -f restate-server restate-app restate-register"
   },
   "devDependencies": {
+    "prettier": "3.9.4",
     "typescript": "^5.7.2"
   }
 }
