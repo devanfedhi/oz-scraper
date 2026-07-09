@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+pnpm install --frozen-lockfile --offline
+./node_modules/.bin/prettier --check .
+pnpm -r build
+pnpm -r typecheck
+docker compose config >/dev/null

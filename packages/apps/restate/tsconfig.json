@@ -6,8 +6,6 @@
     "composite": true,
     "types": ["node"]
   },
-  "references": [
-    { "path": "../../libs/db" }
-  ],
+  "references": [{ "path": "../../libs/db" }],
   "include": ["src/**/*.ts"]
 }

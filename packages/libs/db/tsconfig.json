@@ -6,8 +6,6 @@
     "composite": true,
     "types": ["node"]
   },
-  "references": [
-    { "path": "../types" }
-  ],
+  "references": [{ "path": "../types" }],
   "include": ["src/**/*.ts"]
 }
