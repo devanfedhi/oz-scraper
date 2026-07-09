@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: oz_scraper
+      POSTGRES_USER: oz
+      POSTGRES_PASSWORD: oz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oz -d oz_scraper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  liquibase:
+    image: liquibase/liquibase:4.31
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      LIQUIBASE_COMMAND_URL: jdbc:postgresql://db:5432/oz_scraper
+      LIQUIBASE_COMMAND_USERNAME: oz
+      LIQUIBASE_COMMAND_PASSWORD: oz
+      LIQUIBASE_COMMAND_CHANGELOG_FILE: changelog/db.changelog.yaml
+    volumes:
+      - ./liquibase:/liquibase/changelog:ro
+    command: ["update"]
+
+  restate-server:
+    image: docker.restate.dev/restatedev/restate:latest
+    restart: unless-stopped
+    environment:
+      RESTATE_ADVERTISED_HOST: localhost
+    ports:
+      - "8080:8080"
+      - "9070:9070"
+
+  restate-app:
+    build:
+      context: .
+      dockerfile: packages/apps/restate/Dockerfile
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+    environment:
+      OZ_SCRAPER_DATABASE_URL: postgres://oz:oz@db:5432/oz_scraper?sslmode=disable
+
+  restate-register:
+    image: docker.restate.dev/restatedev/restate:latest
+    restart: "no"
+    depends_on:
+      restate-server:
+        condition: service_started
+      restate-app:
+        condition: service_started
+    environment:
+      RESTATE_ADMIN_URL: http://restate-server:9070
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        until restate deployments register --force --yes http://restate-app:9080; do
+          sleep 2
+        done
+
+volumes:
+  postgres-data:
