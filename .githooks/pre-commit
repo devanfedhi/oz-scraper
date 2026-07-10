@@ -6,3 +6,4 @@ pnpm install --frozen-lockfile --offline
 pnpm -r build
 pnpm -r typecheck
 docker compose config >/dev/null
+pnpm test
