@@ -5,7 +5,6 @@ export const NOTIFIER_RUN_HANDLER_NAME = "run";
 export type NotifierRunResult = {
   service: typeof NOTIFIER_CRON_JOB_PRESET_NAME;
   status: "ok";
-  runtime: "node";
   database: string;
   executedAt: string;
 };

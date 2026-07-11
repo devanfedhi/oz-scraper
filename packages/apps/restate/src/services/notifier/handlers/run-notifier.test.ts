@@ -17,7 +17,6 @@ describe("runNotifier", () => {
     await expect(runNotifier(ctx as never)).resolves.toEqual({
       service: "notifier",
       status: "ok",
-      runtime: "node",
       database: "oz_scraper",
       executedAt: "2026-07-01T00:00:00.000Z"
     });
