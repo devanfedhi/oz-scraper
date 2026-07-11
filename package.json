@@ -8,7 +8,9 @@
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck",
     "docker:start": "docker compose up -d --build",
+    "docker:infra": "docker compose up -d db liquibase restate-server",
     "docker:stop": "docker compose down",
+    "restate:dev": "node scripts/restate-dev.mjs",
     "restate:health": "curl --fail --silent --show-error http://localhost:9070/health",
     "restate:logs": "docker compose logs -f restate-server restate-app restate-register"
   },

@@ -15,7 +15,6 @@ export async function runNotifier(ctx: restate.Context): Promise<NotifierRunResu
   return {
     service: NOTIFIER_CRON_JOB_PRESET_NAME,
     status: result.status,
-    runtime: "node",
     database: result.database,
     executedAt
   };
