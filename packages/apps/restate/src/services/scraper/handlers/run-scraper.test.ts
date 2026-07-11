@@ -50,8 +50,10 @@ describe("runScraper", () => {
     });
   });
 
-  it("returns a failed result when fetching deal ids fails", async () => {
+  it("rethrows when fetching deal ids fails", async () => {
     const run = vi.fn();
+    const error = new Error("fetch failed");
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const ctx = {
       date: {
         now: vi.fn().mockResolvedValue(Date.parse("2026-07-01T00:00:00.000Z"))
@@ -59,25 +61,22 @@ describe("runScraper", () => {
       serviceSendClient: vi.fn().mockReturnValue({
         run
       }),
-      run: vi.fn().mockRejectedValue(new Error("fetch failed"))
+      run: vi.fn().mockRejectedValue(error)
     };
 
-    await expect(runScraper(ctx as never)).resolves.toEqual({
-      service: "scraper",
-      status: "failed",
-      sourceUrl:
-        "https://www.ozbargain.com.au/api/live?last=0&disable=comments,votes,wiki&types=Comp,Forum",
-      fetchedCount: 0,
-      executedAt: "2026-07-01T00:00:00.000Z"
-    });
+    await expect(runScraper(ctx as never)).rejects.toThrow(error);
     expect(ctx.run).toHaveBeenCalledOnce();
     expect(ctx.serviceSendClient).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Scraper run failed", error);
+    consoleErrorSpy.mockRestore();
   });
 
-  it("returns a failed result when enqueuing deal parsing fails", async () => {
+  it("rethrows when enqueuing deal parsing fails", async () => {
+    const error = new Error("send failed");
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const run = vi.fn().mockImplementation(() => {
-      throw new Error("send failed");
+      throw error;
     });
     const ctx = {
       date: {
@@ -91,14 +90,7 @@ describe("runScraper", () => {
       })
     };
 
-    await expect(runScraper(ctx as never)).resolves.toEqual({
-      service: "scraper",
-      status: "failed",
-      sourceUrl:
-        "https://www.ozbargain.com.au/api/live?last=0&disable=comments,votes,wiki&types=Comp,Forum",
-      fetchedCount: 0,
-      executedAt: "2026-07-01T00:00:00.000Z"
-    });
+    await expect(runScraper(ctx as never)).rejects.toThrow(error);
     expect(ctx.run).toHaveBeenCalledOnce();
     expect(ctx.serviceSendClient).toHaveBeenCalledOnce();
     expect(run).toHaveBeenCalledTimes(1);
@@ -111,5 +103,7 @@ describe("runScraper", () => {
     expect(run.mock.calls[0]?.[1]?.getOpts()).toEqual({
       idempotencyKey: "deal-parser//967471//2026-07-01T00:00:00.000Z"
     });
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Scraper run failed", error);
+    consoleErrorSpy.mockRestore();
   });
 });

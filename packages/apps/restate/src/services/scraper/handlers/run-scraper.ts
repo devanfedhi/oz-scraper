@@ -11,7 +11,6 @@ import {
 export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult> {
   const executedAt = new Date(await ctx.date.now());
   const execuateAtIsoString = executedAt.toISOString();
-
   try {
     const dealsResponse = await ctx.run(
       "fetch-ozbargain-deals",
@@ -38,13 +37,6 @@ export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult
     };
   } catch (error) {
     console.error("Scraper run failed", error);
-
-    return {
-      service: SCRAPER_CRON_JOB_PRESET_NAME,
-      status: "failed",
-      sourceUrl: OZBARGAIN_DEALS_API_URL,
-      fetchedCount: 0,
-      executedAt: execuateAtIsoString
-    };
+    throw error;
   }
 }

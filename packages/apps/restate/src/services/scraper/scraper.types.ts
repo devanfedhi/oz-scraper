@@ -4,7 +4,7 @@ export const SCRAPER_RUN_HANDLER_NAME = "run";
 
 export type ScraperRunResult = {
   service: typeof SCRAPER_CRON_JOB_PRESET_NAME;
-  status: "ok" | "failed";
+  status: "ok";
   sourceUrl: string;
   fetchedCount: number;
   executedAt: string;
