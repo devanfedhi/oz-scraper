@@ -10,7 +10,7 @@ import {
 
 export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult> {
   const executedAt = new Date(await ctx.date.now());
-  const execuateAtIsoString = executedAt.toISOString();
+  const executedAtIsoString = executedAt.toISOString();
   try {
     const dealsResponse = await ctx.run(
       "fetch-ozbargain-deals",
@@ -23,7 +23,7 @@ export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult
       dealParserClient.run(
         { externalId },
         restate.rpc.sendOpts({
-          idempotencyKey: `deal-parser//${externalId}//${execuateAtIsoString}`
+          idempotencyKey: `deal-parser//${externalId}//${executedAtIsoString}`
         })
       );
     }
@@ -33,7 +33,7 @@ export async function runScraper(ctx: restate.Context): Promise<ScraperRunResult
       status: "ok",
       sourceUrl: OZBARGAIN_DEALS_API_URL,
       fetchedCount: dealsResponse.externalIds.length,
-      executedAt: execuateAtIsoString
+      executedAt: executedAtIsoString
     };
   } catch (error) {
     console.error("Scraper run failed", error);

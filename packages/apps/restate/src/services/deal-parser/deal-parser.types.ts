@@ -10,5 +10,6 @@ export type DealParserRunResult = {
   service: typeof DEAL_PARSER_CRON_JOB_PRESET_NAME;
   status: "ok";
   externalId: string;
+  sourceUrl: string;
   executedAt: string;
 };

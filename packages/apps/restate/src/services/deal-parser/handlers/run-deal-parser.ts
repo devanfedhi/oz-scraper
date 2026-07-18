@@ -1,22 +1,38 @@
 import * as restate from "@restatedev/restate-sdk";
+import { inspect } from "node:util";
 
 import {
   DEAL_PARSER_CRON_JOB_PRESET_NAME,
   type DealParserRunRequest,
   type DealParserRunResult
 } from "../deal-parser.types.js";
+import { fetchOzBargainDealByIdStepRetryPolicy } from "../steps/fetch-ozbargain-deal-by-id/fetch-ozbargain-deal-by-id.policy.js";
+import { fetchOzBargainDealById } from "../steps/fetch-ozbargain-deal-by-id/fetch-ozbargain-deal-by-id.js";
 
 export async function runDealParser(
   ctx: restate.Context,
   request: DealParserRunRequest
 ): Promise<DealParserRunResult> {
   const executedAt = new Date(await ctx.date.now());
-  const execuateAtIsoString = executedAt.toISOString();
+  const executedAtIsoString = executedAt.toISOString();
+  try {
+    const fetchedDeal = await ctx.run(
+      "fetch-ozbargain-deal-by-id",
+      () => fetchOzBargainDealById(request.externalId),
+      fetchOzBargainDealByIdStepRetryPolicy
+    );
 
-  return {
-    service: DEAL_PARSER_CRON_JOB_PRESET_NAME,
-    status: "ok",
-    externalId: request.externalId,
-    executedAt: execuateAtIsoString
-  };
+    console.log(inspect(fetchedDeal, { depth: null, colors: false }));
+
+    return {
+      service: DEAL_PARSER_CRON_JOB_PRESET_NAME,
+      status: "ok",
+      externalId: request.externalId,
+      sourceUrl: fetchedDeal.sourceUrl,
+      executedAt: executedAtIsoString
+    };
+  } catch (error) {
+    console.error(`Parser run for deal with ID ["${request.externalId}"] failed`, error);
+    throw error;
+  }
 }
