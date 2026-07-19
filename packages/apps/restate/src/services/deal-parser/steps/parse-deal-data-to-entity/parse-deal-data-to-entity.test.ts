@@ -1,6 +1,66 @@
 import { describe, expect, it } from "vitest";
+import { TerminalError } from "@restatedev/restate-sdk";
 
 import { parseDealDataToEntity } from "./parse-deal-data-to-entity.js";
+
+import type { FetchedOzBargainDealById } from "../fetch-ozbargain-deal-by-id/fetch-ozbargain-deal-by-id.types.js";
+
+const DEAL_ID = "b9f0c89c-0d03-4d35-92be-96dd055d4c0b";
+const SCRAPED_AT = new Date("2026-07-18T00:05:00.000Z");
+
+type FetchedDealOverrides = {
+  externalId?: string;
+  scrapedData?: Partial<FetchedOzBargainDealById["scrapedData"]>;
+  sourceUrl?: string;
+  structuredData?: Partial<NonNullable<FetchedOzBargainDealById["structuredData"]>> | null;
+};
+
+function buildFetchedDeal(overrides: FetchedDealOverrides = {}): FetchedOzBargainDealById {
+  return {
+    externalId: overrides.externalId ?? "967471",
+    sourceUrl: overrides.sourceUrl ?? "https://www.ozbargain.com.au/node/967471",
+    structuredData:
+      overrides.structuredData === null
+        ? null
+        : {
+            author: {
+              name: "Example Author",
+              url: "https://www.ozbargain.com.au/user/123"
+            },
+            commentCount: 12,
+            dateModified: "2026-07-18T11:00:00+1000",
+            datePublished: "2026-07-18T10:40:05+1000",
+            headline: "Example deal",
+            image: "https://files.ozbargain.com.au/n/71/967471l.jpg?h=abc123",
+            keywords: ["Electrical & Electronics", "Headphones"],
+            name: "Example deal",
+            ...overrides.structuredData
+          },
+    scrapedData: {
+      actualDealUrl: "https://example.com/deal",
+      clickCount: 75,
+      couponCode: null,
+      descriptionText: "Body copy",
+      endDateText: "31 Jul 11:59pm",
+      isAffiliate: false,
+      isFreebie: false,
+      labels: ["long running"],
+      merchantDomainText: "merchant.example",
+      ozbargainGotoUrl: "https://www.ozbargain.com.au/goto/967471",
+      relatedStores: [
+        {
+          dealProfileUrl: "https://www.ozbargain.com.au/deals/example.com",
+          marker: "Marketplace",
+          name: "Example Store"
+        }
+      ],
+      startDateText: "From 21 Jul 8:00am",
+      voteCountNegative: 2,
+      voteCountPositive: 5,
+      ...overrides.scrapedData
+    }
+  };
+}
 
 describe("parseDealDataToEntity", () => {
   it("maps fetched deal data into a normalized deal entity and relation collections", () => {
@@ -115,6 +175,7 @@ describe("parseDealDataToEntity", () => {
           dateModified: "2026-07-18T11:00:00+1000",
           headline: "Example deal",
           image: "https://files.ozbargain.com.au/n/71/967471l.jpg?h=abc123",
+          keywords: ["Electrical & Electronics"],
           commentCount: 12,
           author: {
             name: "Example Author",
@@ -169,9 +230,113 @@ describe("parseDealDataToEntity", () => {
     ]);
   });
 
-  it("throws a terminal error when required entity fields are missing", async () => {
-    const restate = await import("@restatedev/restate-sdk");
+  it("marks the first distinct related store as primary", () => {
+    const result = parseDealDataToEntity(
+      buildFetchedDeal({
+        scrapedData: {
+          relatedStores: [
+            {
+              dealProfileUrl: "https://www.ozbargain.com.au/deals/first.example",
+              marker: null,
+              name: "First Store"
+            },
+            {
+              dealProfileUrl: "https://www.ozbargain.com.au/deals/second.example",
+              marker: "Marketplace",
+              name: "Second Store"
+            }
+          ]
+        }
+      }),
+      {
+        dealId: DEAL_ID,
+        scrapedAt: SCRAPED_AT
+      }
+    );
 
+    expect(result.relatedStores).toEqual([
+      {
+        dealId: DEAL_ID,
+        dealProfileUrl: "https://www.ozbargain.com.au/deals/first.example",
+        marker: null,
+        name: "First Store",
+        primary: true
+      },
+      {
+        dealId: DEAL_ID,
+        dealProfileUrl: "https://www.ozbargain.com.au/deals/second.example",
+        marker: "Marketplace",
+        name: "Second Store",
+        primary: false
+      }
+    ]);
+  });
+
+  it("normalizes tags and uses the first normalized label", () => {
+    const result = parseDealDataToEntity(
+      buildFetchedDeal({
+        structuredData: {
+          keywords: [" Sony ", "", "Sony", " Headphones "]
+        },
+        scrapedData: {
+          labels: [" ", " targeted ", "popular"]
+        }
+      }),
+      {
+        dealId: DEAL_ID,
+        scrapedAt: SCRAPED_AT
+      }
+    );
+
+    expect(result.label).toBe("targeted");
+    expect(result.tags).toEqual([
+      {
+        dealId: DEAL_ID,
+        name: "Sony"
+      },
+      {
+        dealId: DEAL_ID,
+        name: "Headphones"
+      }
+    ]);
+  });
+
+  it("uses a null label when no labels are present", () => {
+    const result = parseDealDataToEntity(
+      buildFetchedDeal({
+        scrapedData: {
+          labels: ["", " "]
+        }
+      }),
+      {
+        dealId: DEAL_ID,
+        scrapedAt: SCRAPED_AT
+      }
+    );
+
+    expect(result.label).toBeNull();
+  });
+
+  it("parses January dates into the next year for December deals", () => {
+    const result = parseDealDataToEntity(
+      buildFetchedDeal({
+        structuredData: {
+          datePublished: "2026-12-30T10:40:05+1000"
+        },
+        scrapedData: {
+          endDateText: "2 Jan"
+        }
+      }),
+      {
+        dealId: DEAL_ID,
+        scrapedAt: new Date("2026-12-30T00:05:00.000Z")
+      }
+    );
+
+    expect(result.endDate?.toISOString()).toBe("2027-01-01T14:00:00.000Z");
+  });
+
+  it("throws a terminal error when required entity fields are missing", () => {
     expect(() =>
       parseDealDataToEntity(
         {
@@ -202,6 +367,99 @@ describe("parseDealDataToEntity", () => {
           scrapedAt: new Date("2026-07-18T00:05:00.000Z")
         }
       )
-    ).toThrow(restate.TerminalError);
+    ).toThrow(TerminalError);
+  });
+
+  it.each([
+    [
+      "actual deal URL",
+      buildFetchedDeal({
+        scrapedData: {
+          actualDealUrl: "not a url"
+        }
+      })
+    ],
+    [
+      "OzBargain goto URL",
+      buildFetchedDeal({
+        scrapedData: {
+          ozbargainGotoUrl: "not a url"
+        }
+      })
+    ],
+    [
+      "image URL",
+      buildFetchedDeal({
+        structuredData: {
+          image: "not a url"
+        }
+      })
+    ],
+    [
+      "related store profile URL",
+      buildFetchedDeal({
+        scrapedData: {
+          relatedStores: [
+            {
+              dealProfileUrl: "not a url",
+              marker: null,
+              name: "Example Store"
+            }
+          ]
+        }
+      })
+    ]
+  ])("throws a terminal error for an invalid required %s", (_caseName, fetchedDeal) => {
+    expect(() =>
+      parseDealDataToEntity(fetchedDeal, {
+        dealId: DEAL_ID,
+        scrapedAt: SCRAPED_AT
+      })
+    ).toThrow(TerminalError);
+  });
+
+  it.each([
+    [
+      "published date",
+      buildFetchedDeal({
+        structuredData: {
+          datePublished: undefined
+        }
+      })
+    ],
+    [
+      "author external id",
+      buildFetchedDeal({
+        structuredData: {
+          author: {
+            name: "Example Author",
+            url: "https://www.ozbargain.com.au/users/example"
+          }
+        }
+      })
+    ],
+    [
+      "tags",
+      buildFetchedDeal({
+        structuredData: {
+          keywords: []
+        }
+      })
+    ],
+    [
+      "related stores",
+      buildFetchedDeal({
+        scrapedData: {
+          relatedStores: []
+        }
+      })
+    ]
+  ])("throws a terminal error when required %s cannot be parsed", (_caseName, fetchedDeal) => {
+    expect(() =>
+      parseDealDataToEntity(fetchedDeal, {
+        dealId: DEAL_ID,
+        scrapedAt: SCRAPED_AT
+      })
+    ).toThrow(TerminalError);
   });
 });

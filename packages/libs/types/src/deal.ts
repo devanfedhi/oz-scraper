@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const requiredDateSchema = z.union([z.date(), z.string(), z.number()]).pipe(z.coerce.date());
+
 export const dealTagSchema = z.object({
   dealId: z.string().uuid(),
   name: z.string()
@@ -23,7 +25,7 @@ export const dealSchema = z.object({
   title: z.string(),
   label: z.string().nullable(),
   sourceUrl: z.string().url(),
-  publishedAt: z.coerce.date(),
+  publishedAt: requiredDateSchema,
   modifiedAt: z.coerce.date().nullable(),
   commentCount: z.number().int().nonnegative(),
   authorExternalId: z.string(),
@@ -40,9 +42,9 @@ export const dealSchema = z.object({
   voteCountPositive: z.number().int().nonnegative(),
   voteCountNegative: z.number().int().nonnegative(),
   merchantDomainText: z.string(),
-  scrapedAt: z.coerce.date(),
-  tags: z.array(dealTagSchema),
-  relatedStores: z.array(dealRelatedStoreSchema)
+  scrapedAt: requiredDateSchema,
+  tags: z.array(dealTagSchema).min(1),
+  relatedStores: z.array(dealRelatedStoreSchema).min(1)
 });
 
 export type Deal = z.infer<typeof dealSchema>;

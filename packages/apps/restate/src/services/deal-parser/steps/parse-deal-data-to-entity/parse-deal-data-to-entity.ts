@@ -53,7 +53,10 @@ function parseOzBargainDateText(
     return null;
   }
 
-  const year = referenceDate?.getUTCFullYear() ?? new Date().getUTCFullYear();
+  const referenceYear = referenceDate?.getUTCFullYear() ?? new Date().getUTCFullYear();
+  const referenceMonth = referenceDate?.getUTCMonth();
+  const year =
+    referenceMonth !== undefined && monthIndex < referenceMonth ? referenceYear + 1 : referenceYear;
   const day = Number.parseInt(match.groups.day, 10);
   const timeText = match.groups.time?.toLowerCase() ?? "12:00am";
   const timeMatch = timeText.match(/^(?<hours>\d{1,2}):(?<minutes>\d{2})(?<period>am|pm)$/u);
