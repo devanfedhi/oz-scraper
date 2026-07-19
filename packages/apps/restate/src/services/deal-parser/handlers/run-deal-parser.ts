@@ -8,6 +8,7 @@ import {
 } from "../deal-parser.types.js";
 import { fetchOzBargainDealByIdStepRetryPolicy } from "../steps/fetch-ozbargain-deal-by-id/fetch-ozbargain-deal-by-id.policy.js";
 import { fetchOzBargainDealById } from "../steps/fetch-ozbargain-deal-by-id/fetch-ozbargain-deal-by-id.js";
+import { parseDealDataToEntity } from "../steps/parse-deal-data-to-entity/parse-deal-data-to-entity.js";
 
 export async function runDealParser(
   ctx: restate.Context,
@@ -21,14 +22,15 @@ export async function runDealParser(
       () => fetchOzBargainDealById(request.externalId),
       fetchOzBargainDealByIdStepRetryPolicy
     );
-
-    console.log(inspect(fetchedDeal, { depth: null, colors: false }));
+    console.log(inspect(fetchedDeal, { depth: null, colors: true }));
+    const parsedDeal = await parseDealDataToEntity(ctx, fetchedDeal);
+    console.log(inspect(parsedDeal, { depth: null, colors: true }));
 
     return {
       service: DEAL_PARSER_CRON_JOB_PRESET_NAME,
       status: "ok",
       externalId: request.externalId,
-      sourceUrl: fetchedDeal.sourceUrl,
+      sourceUrl: parsedDeal.sourceUrl,
       executedAt: executedAtIsoString
     };
   } catch (error) {

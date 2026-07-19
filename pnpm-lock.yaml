@@ -23,6 +23,9 @@ importers:
       '@oz-scraper/db':
         specifier: workspace:*
         version: link:../../libs/db
+      '@oz-scraper/types':
+        specifier: workspace:*
+        version: link:../../libs/types
       '@restatedev/restate-sdk':
         specifier: 1.15.1
         version: 1.15.1

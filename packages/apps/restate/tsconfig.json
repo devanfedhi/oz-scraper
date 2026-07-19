@@ -1,12 +1,16 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "rootDir": "src",
     "outDir": "dist",
     "composite": true,
+    "paths": {
+      "@oz-scraper/types": ["../../libs/types/src/index.ts"]
+    },
     "types": ["node"]
   },
-  "references": [{ "path": "../../libs/db" }],
+  "references": [{ "path": "../../libs/db" }, { "path": "../../libs/types" }],
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }
