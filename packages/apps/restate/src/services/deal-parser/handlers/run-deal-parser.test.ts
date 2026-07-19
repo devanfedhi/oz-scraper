@@ -5,7 +5,7 @@ import { runDealParser } from "./run-deal-parser.js";
 
 describe("runDealParser", () => {
   it("fetches the deal page by externalId and returns the deal parser result", async () => {
-    const run = vi.fn().mockResolvedValue({
+    const fetchedDeal = {
       externalId: "967471",
       scrapedData: {
         actualDealUrl: null,
@@ -25,7 +25,35 @@ describe("runDealParser", () => {
       },
       sourceUrl: "https://www.ozbargain.com.au/node/967471",
       structuredData: null
-    });
+    };
+    const parsedDeal = {
+      actualDealUrl: null,
+      authorExternalId: null,
+      clickCount: null,
+      commentCount: null,
+      couponCode: null,
+      description: null,
+      endDate: null,
+      externalId: "967471",
+      id: "35a6d3cb-875d-4a24-8f95-7319bf3afc34",
+      imageUrl: null,
+      isAffiliate: false,
+      isFreebie: false,
+      label: null,
+      merchantDomainText: null,
+      modifiedAt: null,
+      ozbargainGotoUrl: null,
+      publishedAt: null,
+      scrapedAt: new Date("2026-07-01T00:00:00.000Z"),
+      sourceUrl: "https://www.ozbargain.com.au/node/967471",
+      startDate: null,
+      title: "https://www.ozbargain.com.au/node/967471",
+      voteCountNegative: null,
+      voteCountPositive: null,
+      relatedStores: [],
+      tags: []
+    };
+    const run = vi.fn().mockResolvedValueOnce(fetchedDeal).mockResolvedValueOnce(parsedDeal);
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const ctx = {
       date: {
@@ -46,9 +74,10 @@ describe("runDealParser", () => {
       expect.any(Function),
       fetchOzBargainDealByIdStepRetryPolicy
     );
-    expect(consoleLogSpy).toHaveBeenCalledOnce();
-    expect(consoleLogSpy.mock.calls[0]?.[0]).toContain(
-      "sourceUrl: 'https://www.ozbargain.com.au/node/967471'"
+    expect(run).toHaveBeenNthCalledWith(2, "parse-deal-data-to-entity", expect.any(Function));
+    expect(consoleLogSpy).toHaveBeenCalled();
+    expect(consoleLogSpy.mock.calls.at(-1)?.[0]).toContain(
+      "https://www.ozbargain.com.au/node/967471"
     );
     consoleLogSpy.mockRestore();
   });

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@oz-scraper/db": "workspace:*",
+    "@oz-scraper/types": "workspace:*",
     "@restatedev/restate-sdk": "1.15.1",
     "cron-parser": "^5.0.0"
   },
