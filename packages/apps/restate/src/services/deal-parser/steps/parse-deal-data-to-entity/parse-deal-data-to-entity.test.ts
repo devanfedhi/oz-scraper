@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { TerminalError } from "@restatedev/restate-sdk";
+import { describe, expect, it, vi } from "vitest";
+import { TerminalError, type Context } from "@restatedev/restate-sdk";
 
 import { parseDealDataToEntity } from "./parse-deal-data-to-entity.js";
 
@@ -13,6 +13,11 @@ type FetchedDealOverrides = {
   scrapedData?: Partial<FetchedOzBargainDealById["scrapedData"]>;
   sourceUrl?: string;
   structuredData?: Partial<NonNullable<FetchedOzBargainDealById["structuredData"]>> | null;
+};
+
+type ParseContextOptions = {
+  dealId?: string;
+  scrapedAt?: Date;
 };
 
 function buildFetchedDeal(overrides: FetchedDealOverrides = {}): FetchedOzBargainDealById {
@@ -62,9 +67,41 @@ function buildFetchedDeal(overrides: FetchedDealOverrides = {}): FetchedOzBargai
   };
 }
 
+function buildParseContext(options: ParseContextOptions = {}): Context {
+  return {
+    date: {
+      now: vi.fn().mockResolvedValue((options.scrapedAt ?? SCRAPED_AT).getTime())
+    },
+    rand: {
+      uuidv4: vi.fn().mockReturnValue(options.dealId ?? DEAL_ID)
+    }
+  } as never;
+}
+
+async function parseFetchedDeal(
+  fetchedDeal: FetchedOzBargainDealById,
+  options: ParseContextOptions = {}
+) {
+  return parseDealDataToEntity(buildParseContext(options), fetchedDeal);
+}
+
 describe("parseDealDataToEntity", () => {
-  it("maps fetched deal data into a normalized deal entity and relation collections", () => {
-    const result = parseDealDataToEntity(
+  it("generates entity metadata from Restate context helpers", async () => {
+    const ctx = buildParseContext({
+      dealId: "35a6d3cb-875d-4a24-8f95-7319bf3afc34",
+      scrapedAt: new Date("2026-07-19T07:15:00.000Z")
+    });
+
+    const result = await parseDealDataToEntity(ctx, buildFetchedDeal());
+
+    expect(result.id).toBe("35a6d3cb-875d-4a24-8f95-7319bf3afc34");
+    expect(result.scrapedAt.toISOString()).toBe("2026-07-19T07:15:00.000Z");
+    expect(ctx.rand.uuidv4).toHaveBeenCalledOnce();
+    expect(ctx.date.now).toHaveBeenCalledOnce();
+  });
+
+  it("maps fetched deal data into a normalized deal entity and relation collections", async () => {
+    const result = await parseFetchedDeal(
       {
         externalId: "968074",
         sourceUrl: "https://www.ozbargain.com.au/node/968074",
@@ -165,8 +202,8 @@ describe("parseDealDataToEntity", () => {
     ]);
   });
 
-  it("parses start and end dates with times using the structured data year and offset", () => {
-    const result = parseDealDataToEntity(
+  it("parses start and end dates with times using the structured data year and offset", async () => {
+    const result = await parseFetchedDeal(
       {
         externalId: "967471",
         sourceUrl: "https://www.ozbargain.com.au/node/967471",
@@ -230,8 +267,8 @@ describe("parseDealDataToEntity", () => {
     ]);
   });
 
-  it("marks the first distinct related store as primary", () => {
-    const result = parseDealDataToEntity(
+  it("marks the first distinct related store as primary", async () => {
+    const result = await parseFetchedDeal(
       buildFetchedDeal({
         scrapedData: {
           relatedStores: [
@@ -272,8 +309,8 @@ describe("parseDealDataToEntity", () => {
     ]);
   });
 
-  it("normalizes tags and uses the first normalized label", () => {
-    const result = parseDealDataToEntity(
+  it("normalizes tags and uses the first normalized label", async () => {
+    const result = await parseFetchedDeal(
       buildFetchedDeal({
         structuredData: {
           keywords: [" Sony ", "", "Sony", " Headphones "]
@@ -301,8 +338,8 @@ describe("parseDealDataToEntity", () => {
     ]);
   });
 
-  it("uses a null label when no labels are present", () => {
-    const result = parseDealDataToEntity(
+  it("uses a null label when no labels are present", async () => {
+    const result = await parseFetchedDeal(
       buildFetchedDeal({
         scrapedData: {
           labels: ["", " "]
@@ -317,11 +354,11 @@ describe("parseDealDataToEntity", () => {
     expect(result.label).toBeNull();
   });
 
-  it("parses January dates into the next year for December deals", () => {
-    const result = parseDealDataToEntity(
+  it("parses January dates into the next year for December deals", async () => {
+    const result = await parseFetchedDeal(
       buildFetchedDeal({
         structuredData: {
-          datePublished: "2026-12-30T10:40:05+1000"
+          datePublished: "2026-12-30T10:40:05+1100"
         },
         scrapedData: {
           endDateText: "2 Jan"
@@ -333,12 +370,31 @@ describe("parseDealDataToEntity", () => {
       }
     );
 
-    expect(result.endDate?.toISOString()).toBe("2027-01-01T14:00:00.000Z");
+    expect(result.endDate?.toISOString()).toBe("2027-01-01T13:00:00.000Z");
   });
 
-  it("throws a terminal error when required entity fields are missing", () => {
-    expect(() =>
-      parseDealDataToEntity(
+  it("uses the source-local reference year around UTC year boundaries", async () => {
+    const result = await parseFetchedDeal(
+      buildFetchedDeal({
+        structuredData: {
+          datePublished: "2026-01-01T00:30:00+1100"
+        },
+        scrapedData: {
+          endDateText: "31 Dec"
+        }
+      }),
+      {
+        dealId: DEAL_ID,
+        scrapedAt: new Date("2025-12-31T13:30:00.000Z")
+      }
+    );
+
+    expect(result.endDate?.toISOString()).toBe("2026-12-30T13:00:00.000Z");
+  });
+
+  it("throws a terminal error when required entity fields are missing", async () => {
+    await expect(
+      parseFetchedDeal(
         {
           externalId: "967471",
           sourceUrl: "https://www.ozbargain.com.au/node/967471",
@@ -367,7 +423,7 @@ describe("parseDealDataToEntity", () => {
           scrapedAt: new Date("2026-07-18T00:05:00.000Z")
         }
       )
-    ).toThrow(TerminalError);
+    ).rejects.toThrow(TerminalError);
   });
 
   it.each([
@@ -409,13 +465,13 @@ describe("parseDealDataToEntity", () => {
         }
       })
     ]
-  ])("throws a terminal error for an invalid required %s", (_caseName, fetchedDeal) => {
-    expect(() =>
-      parseDealDataToEntity(fetchedDeal, {
+  ])("throws a terminal error for an invalid required %s", async (_caseName, fetchedDeal) => {
+    await expect(
+      parseFetchedDeal(fetchedDeal, {
         dealId: DEAL_ID,
         scrapedAt: SCRAPED_AT
       })
-    ).toThrow(TerminalError);
+    ).rejects.toThrow(TerminalError);
   });
 
   it.each([
@@ -454,12 +510,15 @@ describe("parseDealDataToEntity", () => {
         }
       })
     ]
-  ])("throws a terminal error when required %s cannot be parsed", (_caseName, fetchedDeal) => {
-    expect(() =>
-      parseDealDataToEntity(fetchedDeal, {
-        dealId: DEAL_ID,
-        scrapedAt: SCRAPED_AT
-      })
-    ).toThrow(TerminalError);
-  });
+  ])(
+    "throws a terminal error when required %s cannot be parsed",
+    async (_caseName, fetchedDeal) => {
+      await expect(
+        parseFetchedDeal(fetchedDeal, {
+          dealId: DEAL_ID,
+          scrapedAt: SCRAPED_AT
+        })
+      ).rejects.toThrow(TerminalError);
+    }
+  );
 });

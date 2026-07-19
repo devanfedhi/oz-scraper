@@ -23,11 +23,7 @@ export async function runDealParser(
       fetchOzBargainDealByIdStepRetryPolicy
     );
     console.log(inspect(fetchedDeal, { depth: null, colors: true }));
-    const parsedDeal = await ctx.run("parse-deal-data-to-entity", () =>
-      parseDealDataToEntity(fetchedDeal, {
-        scrapedAt: executedAt
-      })
-    );
+    const parsedDeal = await parseDealDataToEntity(ctx, fetchedDeal);
     console.log(inspect(parsedDeal, { depth: null, colors: true }));
 
     return {

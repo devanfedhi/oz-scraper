@@ -8,56 +8,49 @@ describe("runDealParser", () => {
     const fetchedDeal = {
       externalId: "967471",
       scrapedData: {
-        actualDealUrl: null,
-        clickCount: null,
+        actualDealUrl: "https://example.com/deal",
+        clickCount: 75,
         couponCode: null,
-        descriptionText: null,
+        descriptionText: "Body copy",
         endDateText: null,
         isAffiliate: false,
         isFreebie: false,
-        labels: [],
-        merchantDomainText: null,
-        ozbargainGotoUrl: null,
-        relatedStores: [],
+        labels: ["targeted"],
+        merchantDomainText: "merchant.example",
+        ozbargainGotoUrl: "https://www.ozbargain.com.au/goto/967471",
+        relatedStores: [
+          {
+            dealProfileUrl: "https://www.ozbargain.com.au/deals/example.com",
+            marker: null,
+            name: "Example Store"
+          }
+        ],
         startDateText: null,
-        voteCountNegative: null,
-        voteCountPositive: null
+        voteCountNegative: 0,
+        voteCountPositive: 5
       },
       sourceUrl: "https://www.ozbargain.com.au/node/967471",
-      structuredData: null
+      structuredData: {
+        author: {
+          name: "Example Author",
+          url: "https://www.ozbargain.com.au/user/123"
+        },
+        commentCount: 12,
+        dateModified: "2026-07-01T11:00:00+1000",
+        datePublished: "2026-07-01T10:40:05+1000",
+        headline: "Example deal",
+        image: "https://files.ozbargain.com.au/n/71/967471l.jpg?h=abc123",
+        keywords: ["Electrical & Electronics"]
+      }
     };
-    const parsedDeal = {
-      actualDealUrl: null,
-      authorExternalId: null,
-      clickCount: null,
-      commentCount: null,
-      couponCode: null,
-      description: null,
-      endDate: null,
-      externalId: "967471",
-      id: "35a6d3cb-875d-4a24-8f95-7319bf3afc34",
-      imageUrl: null,
-      isAffiliate: false,
-      isFreebie: false,
-      label: null,
-      merchantDomainText: null,
-      modifiedAt: null,
-      ozbargainGotoUrl: null,
-      publishedAt: null,
-      scrapedAt: new Date("2026-07-01T00:00:00.000Z"),
-      sourceUrl: "https://www.ozbargain.com.au/node/967471",
-      startDate: null,
-      title: "https://www.ozbargain.com.au/node/967471",
-      voteCountNegative: null,
-      voteCountPositive: null,
-      relatedStores: [],
-      tags: []
-    };
-    const run = vi.fn().mockResolvedValueOnce(fetchedDeal).mockResolvedValueOnce(parsedDeal);
+    const run = vi.fn().mockResolvedValueOnce(fetchedDeal);
     const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const ctx = {
       date: {
         now: vi.fn().mockResolvedValue(Date.parse("2026-07-01T00:00:00.000Z"))
+      },
+      rand: {
+        uuidv4: vi.fn().mockReturnValue("35a6d3cb-875d-4a24-8f95-7319bf3afc34")
       },
       run
     };
@@ -74,7 +67,9 @@ describe("runDealParser", () => {
       expect.any(Function),
       fetchOzBargainDealByIdStepRetryPolicy
     );
-    expect(run).toHaveBeenNthCalledWith(2, "parse-deal-data-to-entity", expect.any(Function));
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(ctx.date.now).toHaveBeenCalledTimes(2);
+    expect(ctx.rand.uuidv4).toHaveBeenCalledOnce();
     expect(consoleLogSpy).toHaveBeenCalled();
     expect(consoleLogSpy.mock.calls.at(-1)?.[0]).toContain(
       "https://www.ozbargain.com.au/node/967471"
